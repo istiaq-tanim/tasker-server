@@ -25,18 +25,29 @@ const client = new MongoClient(uri, {
 
 async function run() {
       try {
-            await client.connect();
+            // await client.connect();
 
             const taskCollection = client.db("taskDB").collection("tasks");
 
             app.get("/tasks", async (req, res) => {
-                  const tasks = await taskCollection.find().toArray()
+                  let searchTerm = "";
+                  if (req?.query?.searchTerm) {
+                        searchTerm = req.query.searchTerm;
+                  }
+
+                  const tasks = await taskCollection.find({
+                        $or: ["title", "description"].map(field => ({
+                              [field]: { $regex: searchTerm, $options: "i" }
+                        }))
+                  }).toArray();
+
                   res.status(200).json({
                         success: true,
-                        message: 'Tasks Retrieved successfully',
+                        message: 'Tasks retrieved successfully',
                         tasks
                   });
-            })
+            });
+
 
             app.get("/tasks/:id", async (req, res) => {
                   const id = req.params.id
@@ -97,8 +108,8 @@ async function run() {
                   });
             })
 
-            await client.db("admin").command({ ping: 1 });
-            console.log("Pinged your deployment. You successfully connected to MongoDB!");
+            // await client.db("admin").command({ ping: 1 });
+            // console.log("Pinged your deployment. You successfully connected to MongoDB!");
       } finally {
 
             // await client.close();
